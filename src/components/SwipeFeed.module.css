@@ -1,0 +1,324 @@
+/* Scoped styles for the /swipe TikTok-style card feed. Uses the same design
+   tokens as globals.css (--bg, --panel, --panel-2, --border, --text, --muted,
+   --accent, --good, --warn) so it matches the rest of the app without
+   touching the shared stylesheet. */
+
+.page {
+  /* --nav-h is set from JS to the shared app nav's measured height, since
+     that nav lives above this page in the shared layout and still consumes
+     viewport space despite being sticky. Falls back to a reasonable guess
+     before the measurement effect runs. */
+  min-height: calc(100dvh - var(--nav-h, 44px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px 4px;
+}
+.header h1 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.2px;
+}
+.counter {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.errorBanner {
+  margin: 8px 16px 0;
+  background: #2a1414;
+  border: 1px solid #4a2020;
+  color: #ff9d9d;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.errorDismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  padding: 10px 16px 6px;
+  display: flex;
+}
+
+.cardStack {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.status,
+.empty {
+  margin: auto;
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 20px;
+}
+.empty p {
+  margin: 4px 0;
+}
+.emptyTitle {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+.emptySub {
+  font-size: 13px;
+}
+.emptyCta {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #17110b;
+  font-weight: 600;
+  text-decoration: none;
+}
+.emptyCta:hover {
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+/* -- the physical card -- */
+
+.card {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius, 10px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  touch-action: pan-y; /* keep vertical page scroll working */
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+  transition: transform 220ms cubic-bezier(0.22, 0.9, 0.32, 1), opacity 220ms ease;
+}
+.cardTop {
+  z-index: 2;
+  cursor: grab;
+}
+.cardTop:active {
+  cursor: grabbing;
+}
+.cardPeek {
+  z-index: 1;
+  transform: translateY(14px) scale(0.95);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.badge {
+  position: absolute;
+  top: 22px;
+  padding: 6px 14px;
+  border: 3px solid;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.badgeLike {
+  left: 18px;
+  color: var(--good);
+  border-color: var(--good);
+  transform: rotate(-12deg);
+}
+.badgeNope {
+  right: 18px;
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+  transform: rotate(12deg);
+}
+
+/* -- card face (image + info), reused by top and peek cards -- */
+
+.thumbWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--panel-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.thumbFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.quickBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--warn);
+  color: #241d0e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.info {
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.name {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+}
+.meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 4px 0 0;
+}
+.stats > div {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.stats dt {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0;
+}
+.stats dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.outLink {
+  margin-top: auto;
+  align-self: flex-start;
+  color: var(--accent-2);
+  font-size: 13px;
+  text-decoration: none;
+  padding: 4px 0;
+}
+.outLink:hover {
+  text-decoration: underline;
+}
+
+/* -- action bar -- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 14px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+}
+.skipBtn,
+.likeBtn {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  transition: transform 120ms ease;
+}
+.skipBtn {
+  color: #ff6b6b;
+  border-color: #4a2020;
+}
+.likeBtn {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.skipBtn:active,
+.likeBtn:active {
+  transform: scale(0.92);
+}
+.skipBtn:disabled,
+.likeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+.linkOut {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  font-size: 16px;
+}
+.linkOut:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition-duration: 1ms;
+  }
+}

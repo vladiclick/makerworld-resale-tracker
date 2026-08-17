@@ -1,0 +1,10 @@
+node_modules/
+.next/
+data/
+tmp-inspect/
+.env.local
+.env
+*.log
+.DS_Store
+next-env.d.ts
+.netlify/

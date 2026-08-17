@@ -1,0 +1,81 @@
+/** Central knobs. Everything here is overridable via .env.local */
+
+export type Target = {
+  /** Label stored on the model row, e.g. "Fashion > Earrings" */
+  label: string;
+  /**
+   * MakerWorld numeric category id (the number in the category URL slug,
+   * e.g. /en/3d-models/206-earrings -> "206"). Empty string = no filter,
+   * which is what the site's own Trending feed uses.
+   */
+  categoryId: string;
+  /** API sort key. "hotScore" is what the UI shows as Trending / Popular. */
+  orderBy?: 'hotScore' | 'newest' | 'mostDownload' | 'mostCollect';
+  /** designCreateSince: only models published in the last N days. 0 = all time. */
+  createdSinceDays?: number;
+  /** Human-facing page for the same listing, handy for spot checks. */
+  pageUrl: string;
+};
+
+export const SCRAPE = {
+  /** polite delay between API calls, ms */
+  delayMinMs: Number(process.env.SCRAPE_DELAY_MIN_MS ?? 2000),
+  delayMaxMs: Number(process.env.SCRAPE_DELAY_MAX_MS ?? 3000),
+  /** a page fetched inside this window is served from the in-process cache instead of re-hit */
+  cacheTtlMs: Number(process.env.SCRAPE_CACHE_TTL_MS ?? 60 * 60 * 1000), // 1h
+  userAgent:
+    process.env.SCRAPE_USER_AGENT ??
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  /** hard cap on models per target page; keeps CLI full-crawl runs (`npm run scrape`) short and polite */
+  maxModelsPerTarget: Number(process.env.SCRAPE_MAX_PER_TARGET ?? 60),
+};
+
+export const RETENTION = {
+  /** raw snapshots older than this collapse into daily_summaries */
+  rawDays: Number(process.env.RETENTION_RAW_DAYS ?? 90),
+};
+
+const BASE = 'https://makerworld.com/en/3d-models';
+
+/** Category ids verified live against makerworld.com's category nav. */
+export const TARGETS: Target[] = [
+  {
+    label: 'Trending',
+    categoryId: '',
+    orderBy: 'hotScore',
+    createdSinceDays: 7, // same as the site's default trending feed
+    pageUrl: `${BASE}`,
+  },
+  {
+    label: 'Household > Decor',
+    categoryId: '401',
+    orderBy: 'hotScore',
+    pageUrl: `${BASE}/401-decor`,
+  },
+  {
+    label: 'Fashion > Jewelry',
+    categoryId: '208',
+    orderBy: 'hotScore',
+    pageUrl: `${BASE}/208-jewelry`,
+  },
+  {
+    label: 'Fashion > Earrings',
+    categoryId: '206',
+    orderBy: 'hotScore',
+    pageUrl: `${BASE}/206-earrings`,
+  },
+  {
+    label: 'Hobby & DIY',
+    categoryId: '300',
+    orderBy: 'hotScore',
+    pageUrl: `${BASE}/300-hobby-and-diy`,
+  },
+];
+
+/**
+ * Labels of every category the scraper knows how to fetch, in display order.
+ * Safe to import from client components (e.g. ScrapeControls) — it's a
+ * plain derived constant, not env-driven, so nothing server-only leaks into
+ * the browser bundle.
+ */
+export const CATEGORY_LABELS: string[] = TARGETS.map((t) => t.label);

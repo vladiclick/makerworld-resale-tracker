@@ -1,0 +1,53 @@
+# Netlify build configuration for the MakerWorld Resale Tracker
+# (Next.js 15, App Router).
+#
+# About @netlify/plugin-nextjs ("the Next.js Runtime"):
+# it is what turns Next's App Router pages, API routes and server
+# components into Netlify Functions/Edge Functions at deploy time. As of
+# the current Netlify build image, any site that has `next` as a
+# dependency and a `next.config.*` file gets this plugin auto-installed
+# and auto-enabled during the build — you do NOT need to `npm install
+# @netlify/plugin-nextjs` yourself or list it in package.json. The
+# [[plugins]] block below pins that choice explicitly in source control
+# (and makes `netlify build` / `netlify dev` behave the same locally as on
+# Netlify's servers) rather than relying on autodetection silently doing
+# the right thing.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Playwright is a devDependency used only by the local recon scripts
+  # (scripts/inspect-dom.ts, scripts/probe-api.ts,
+  # scripts/probe-categories.ts) — nothing under src/** imports it, and it
+  # must never launch during a Netlify build or at runtime (Netlify
+  # Functions can't run headless Chromium). Left unset, `npm install`
+  # would still trigger playwright's own postinstall step, which downloads
+  # a full Chromium binary — wasted build minutes and bandwidth for a
+  # browser that's never used in production. This var only skips that
+  # download during `npm install`; it doesn't affect running those scripts
+  # locally (run `npx playwright install chromium` yourself first, once,
+  # before using them on your own machine).
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# --- Known limit: POST /api/scrape vs. function timeout -------------------
+# Netlify Functions default to a 10s execution limit on the free tier (26s
+# max, higher tiers only). src/app/api/scrape/route.ts is deliberately
+# stateless per invocation for exactly this reason: it caps each POST at
+# BATCH_CAP = 10 models, and because MakerWorld's API returns up to 20 hits
+# per request, a batch that size is fetched in a SINGLE upstream request
+# (no per-request 2-3s delay applies within one invocation — the delay is
+# only between separate invocations, paced client-side by ScrapeControls
+# .tsx). So one POST is normally: 1 robots.txt fetch (skipped once cached
+# in-process, but a fresh one on every cold start) + 1 MakerWorld API call +
+# 1 Supabase RPC (upsert_models) + 1 Supabase insert (snapshots) — a
+# handful of network round trips, comfortably under 10s in the common case.
+# It is NOT hard-guaranteed, though: a slow MakerWorld response, a slow
+# Supabase region, or Next.js cold-start overhead on top of all of the
+# above could push a single invocation close to the limit. See the "Known
+# limits" section in README.md for the full assessment — this was not
+# changed here since route code is out of scope for this file.

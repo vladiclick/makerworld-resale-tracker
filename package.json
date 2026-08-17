@@ -1,0 +1,40 @@
+{
+  "name": "makerworld-resale-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "scrape": "tsx scripts/scrape.ts",
+    "score": "tsx scripts/score.ts",
+    "retention": "tsx scripts/retention.ts",
+    "inspect": "tsx scripts/inspect-dom.ts",
+    "db:init": "tsx scripts/init-db.ts",
+    "migrate:supabase": "tsx scripts/migrate-sqlite-to-supabase.ts",
+    "probe:categories": "tsx scripts/probe-categories.ts",
+    "probe:api": "tsx scripts/probe-api.ts",
+    "db:apply": "tsx scripts/apply-schema.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^17.4.2",
+    "next": "15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.21.0",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "pg": "^8.23.0",
+    "playwright": "^1.49.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
