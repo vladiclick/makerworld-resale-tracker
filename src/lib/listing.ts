@@ -12,6 +12,26 @@ import { licenseInfo } from './license';
  * from guesswork - see the table in PRICE_BANDS.
  */
 
+/**
+ * Filament actually in stock (Bambu Lab PLA Basic / Pure, ordered Aug 2026).
+ * Listing copy names real colours rather than a vague "mai multe culori" -
+ * a buyer picking a colour from a concrete list converts better, and you can
+ * actually deliver every one of these.
+ */
+export const FILAMENT_COLORS = [
+  'negru',
+  'alb (Jade White)',
+  'alb pur',
+  'gri',
+  'roșu',
+  'cyan',
+  'turcoaz',
+  'mov',
+  'galben',
+  'roz',
+  'maro',
+] as const;
+
 export type ListingInput = {
   name: string;
   creator: string | null;
@@ -120,7 +140,7 @@ export function buildListing(input: ListingInput): Listing {
     '',
     'Detalii:',
     '• Print nou, verificat înainte de expediere',
-    '• Se poate face în mai multe culori — scrie-mi ce culoare vrei',
+    `• Culori disponibile: ${FILAMENT_COLORS.join(', ')} — scrie-mi ce culoare vrei`,
     '• Se poate printa la comandă (2-3 zile)',
     '',
     'Expediere prin curier sau Easybox. Poze reale cu produsul.',
