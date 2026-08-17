@@ -9,15 +9,18 @@
  *   engagement  - likes/downloads, i.e. how much people liked it vs just grabbed it
  *   traction    - absolute download count, log-normalised (a 50-download model
  *                 growing fast is noisier than a 5000-download one)
- *   categoryFit - jewelry/earrings/small decor ship cheap on Vinted/OLX
+ *   categoryFit - market fit: what actually sells on OLX.ro / Vinted.ro,
+ *                 nudged by per-model keyword signal (see categoryFit below)
  *   quickPrint  - heuristic flag for small, low-material, fast prints
  */
 
 export const WEIGHTS = {
-  growth: Number(process.env.SCORE_W_GROWTH ?? 0.35),
-  engagement: Number(process.env.SCORE_W_ENGAGEMENT ?? 0.25),
+  growth: Number(process.env.SCORE_W_GROWTH ?? 0.3),
+  engagement: Number(process.env.SCORE_W_ENGAGEMENT ?? 0.2),
   traction: Number(process.env.SCORE_W_TRACTION ?? 0.1),
-  categoryFit: Number(process.env.SCORE_W_CATEGORY ?? 0.2),
+  // Raised from 0.2: this is now grounded in real OLX/Vinted data rather
+  // than a guess about what "should" sell, so it deserves more of the score.
+  categoryFit: Number(process.env.SCORE_W_CATEGORY ?? 0.3),
   quickPrint: Number(process.env.SCORE_W_QUICKPRINT ?? 0.1),
 };
 
@@ -44,19 +47,81 @@ const TRACTION_REF = Number(process.env.SCORE_TRACTION_REF ?? 5000);
 const ENGAGEMENT_SMOOTH = Number(process.env.SCORE_ENGAGEMENT_SMOOTH ?? 25);
 
 /**
- * Category fit for the Vinted/OLX resale case: small = cheap to ship,
- * fast to print, low filament cost, high margin per gram.
+ * Category fit for the Romanian resale case, calibrated against what is
+ * actually listed and actually wanted (surveyed Aug 2026):
+ *
+ * OLX.ro "printat 3d" - 1000+ live listings, by category:
+ *   Electronice 304 | Casa si gradina 276 | Mama si copilul 270
+ *   Piese auto 90   | MODA SI FRUMUSETE 48  <- jewelry/earrings live here
+ * Typical asking prices: tool organizer 170 lei, board-game inserts 200 lei,
+ * car cup holder 95-100 lei, headphone stand 30-39 lei, figurines 20-50 lei.
+ *
+ * Vinted.ro "printat 3d" - 500+ listings; favourites used as demand signal:
+ *   92♥ LED box 131 lei | 90♥ personalised name letters 70 lei
+ *   63♥ decorative fruit bowl 50 lei | 42♥ bookmark 10 lei
+ *   39♥ necklace holder 16 lei | 28♥ CAT EARRINGS 7 lei
+ * Average price of items with any interest: ~56 lei.
+ *
+ * The lesson that flipped this table: earrings do attract interest, but at
+ * 7-15 lei there's no margin left after filament and shipping. Functional
+ * homeware, organisers and personalised gifts get comparable interest at
+ * 50-170 lei. So jewelry went from 1.0 (the old guess) to the bottom.
  */
 export function categoryFit(category?: string | null): number {
   const c = (category ?? '').toLowerCase();
-  if (c.includes('earring')) return 1.0;
-  if (c.includes('jewel')) return 1.0;
-  if (c.includes('decor')) return 0.75;
-  if (c.includes('fashion')) return 0.7;
-  if (c.includes('household') || c.includes('home')) return 0.55;
-  if (c.includes('hobby') || c.includes('diy')) return 0.45;
-  if (c.includes('trending')) return 0.4; // mixed bag, no category signal
-  return 0.35;
+
+  // Proven sellers: functional homeware + organisers, best price/interest ratio
+  if (c.includes('organizer')) return 1.0;
+  if (c.includes('decor')) return 1.0;
+  if (c.includes('festivit')) return 0.95; // seasonal spikes (Halloween/Christmas)
+  if (c.includes('lithophane') || c.includes('hueforge')) return 0.9; // personalised gifts
+  if (c.includes('office')) return 0.85;
+  if (c.includes('gadget')) return 0.85; // phone/car mounts, 90-100 lei on OLX
+  if (c.includes('creature') || c.includes('character')) return 0.85; // dragons, busts
+  if (c.includes('toys') || c.includes('games') || c.includes('puzzle')) return 0.8;
+  if (c.includes('miniature') || c.includes('animal')) return 0.75;
+  if (c.includes('pets') || c.includes('garden')) return 0.7;
+  if (c.includes('coin') || c.includes('badge')) return 0.6;
+  if (c.includes('hobby') || c.includes('diy')) return 0.6;
+  if (c.includes('household') || c.includes('home')) return 0.65;
+  if (c.includes('trending')) return 0.5; // mixed bag, no category signal
+
+  // Fashion: high interest, but the price ceiling on Vinted is ~7-25 lei.
+  if (c.includes('earring')) return 0.35;
+  if (c.includes('ring')) return 0.35;
+  if (c.includes('jewel')) return 0.4;
+  if (c.includes('fashion')) return 0.4;
+
+  return 0.4;
+}
+
+/**
+ * Keyword-level market signal, independent of category. These are the exact
+ * shapes that carry price on OLX/Vinted (or that reliably don't).
+ * Returns roughly -0.4..+0.4, added to the category fit.
+ */
+const SELLS_WELL = [
+  'personalized', 'personalised', 'custom name', 'name sign', 'nameplate', 'name plate',
+  'holder', 'stand', 'organizer', 'organiser', 'insert', 'mount', 'bracket', 'dock',
+  'lamp', 'light box', 'lightbox', 'led', 'lithophane', 'bookmark', 'coaster',
+  'articulated', 'flexi', 'fidget', 'dragon', 'bowl', 'planter', 'vase',
+  'wall mount', 'desk', 'cable', 'headphone', 'controller', 'board game',
+  'advent', 'christmas', 'halloween', 'gift', 'ornament',
+];
+
+/** Things that don't move, or can't be shipped cheaply from a home printer. */
+const SELLS_BADLY = [
+  'test model', 'calibration', 'benchy', 'printer part', 'printer upgrade',
+  'ams', 'bambu lab', 'nozzle', 'hotend', 'spool holder', 'filament guide',
+  'cosplay', 'helmet', 'full size', 'life size', 'lifesize',
+];
+
+export function marketSignal(name: string, tags?: string[] | null): number {
+  const hay = `${name} ${(tags ?? []).join(' ')}`.toLowerCase();
+  let signal = 0;
+  if (SELLS_WELL.some((k) => hay.includes(k))) signal += 0.35;
+  if (SELLS_BADLY.some((k) => hay.includes(k))) signal -= 0.45;
+  return signal;
 }
 
 const SMALL_HINTS = [
@@ -140,7 +205,10 @@ export function scoreModel(
   const smoothedRatio = likes / (downloads + ENGAGEMENT_SMOOTH);
   const engagementComponent = clamp01(smoothedRatio / ENGAGEMENT_REF);
   const tractionComponent = logNorm(downloads, TRACTION_REF);
-  const categoryBonus = categoryFit(meta.category);
+  // Market fit = where it sits in the category table, nudged by keyword signal.
+  const categoryBonus = clamp01(
+    categoryFit(meta.category) + marketSignal(meta.name, meta.tags)
+  );
   const quickPrint = quickPrintFlag(meta.name, meta.category, meta.tags);
 
   // A brand new model has no growth history yet; fall back to traction so it

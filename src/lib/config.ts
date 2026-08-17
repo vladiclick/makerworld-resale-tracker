@@ -37,7 +37,14 @@ export const RETENTION = {
 
 const BASE = 'https://makerworld.com/en/3d-models';
 
-/** Category ids verified live against makerworld.com's category nav. */
+/**
+ * Category ids verified live against makerworld.com's category nav.
+ *
+ * Deliberately broad: an earlier version tracked only Trending + decor +
+ * jewelry + earrings, so the feed was ~60% earrings regardless of what
+ * actually sells. These cover the categories that show real demand on
+ * OLX.ro / Vinted.ro for printed goods.
+ */
 export const TARGETS: Target[] = [
   {
     label: 'Trending',
@@ -46,30 +53,24 @@ export const TARGETS: Target[] = [
     createdSinceDays: 7, // same as the site's default trending feed
     pageUrl: `${BASE}`,
   },
-  {
-    label: 'Household > Decor',
-    categoryId: '401',
-    orderBy: 'hotScore',
-    pageUrl: `${BASE}/401-decor`,
-  },
-  {
-    label: 'Fashion > Jewelry',
-    categoryId: '208',
-    orderBy: 'hotScore',
-    pageUrl: `${BASE}/208-jewelry`,
-  },
-  {
-    label: 'Fashion > Earrings',
-    categoryId: '206',
-    orderBy: 'hotScore',
-    pageUrl: `${BASE}/206-earrings`,
-  },
-  {
-    label: 'Hobby & DIY',
-    categoryId: '300',
-    orderBy: 'hotScore',
-    pageUrl: `${BASE}/300-hobby-and-diy`,
-  },
+  { label: 'Household > Decor', categoryId: '401', pageUrl: `${BASE}/401-decor` },
+  { label: 'Household > Festivities', categoryId: '403', pageUrl: `${BASE}/403-festivities` },
+  { label: 'Household > Office', categoryId: '404', pageUrl: `${BASE}/404-office` },
+  { label: 'Household > Pets', categoryId: '405', pageUrl: `${BASE}/405-pets` },
+  { label: 'Household > Garden', categoryId: '402', pageUrl: `${BASE}/402-garden` },
+  { label: 'Fashion > Jewelry', categoryId: '208', pageUrl: `${BASE}/208-jewelry` },
+  { label: 'Fashion > Earrings', categoryId: '206', pageUrl: `${BASE}/206-earrings` },
+  { label: 'Fashion > Rings', categoryId: '205', pageUrl: `${BASE}/205-rings` },
+  { label: 'Toys & Games', categoryId: '800', pageUrl: `${BASE}/800-toys-and-games` },
+  { label: 'Toys & Games > Characters', categoryId: '801', pageUrl: `${BASE}/801-characters` },
+  { label: 'Toys & Games > Puzzles', categoryId: '804', pageUrl: `${BASE}/804-puzzles` },
+  { label: 'Miniatures > Animals', categoryId: '601', pageUrl: `${BASE}/601-animals` },
+  { label: 'Miniatures > Creatures', categoryId: '603', pageUrl: `${BASE}/603-creatures` },
+  { label: 'Tools > Organizers', categoryId: '701', pageUrl: `${BASE}/701-organizers` },
+  { label: 'Tools > Gadgets', categoryId: '705', pageUrl: `${BASE}/705-gadgets` },
+  { label: 'Art > Coin & Badges', categoryId: '103', pageUrl: `${BASE}/103-coin-and-badges` },
+  { label: 'Hueforge & Lithophane', categoryId: '2001', pageUrl: `${BASE}/2001-hueforge-and-lithophane` },
+  { label: 'Hobby & DIY', categoryId: '300', pageUrl: `${BASE}/300-hobby-and-diy` },
 ];
 
 /**

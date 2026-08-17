@@ -74,10 +74,43 @@ async function fetchHistoryByModel(
   if (modelIds.length === 0) return map;
   const supabase = getSupabase();
 
-  const [snapsRes, daysRes] = await Promise.all([
-    supabase.from('snapshots').select('model_id, ts, downloads, likes').in('model_id', modelIds),
-    supabase.from('daily_summaries').select('model_id, ts, downloads, likes').in('model_id', modelIds),
+  /**
+   * Two caps to respect at once:
+   *  - PostgREST returns at most 1000 rows per request, silently. With a few
+   *    thousand snapshots that meant most models came back with NO history,
+   *    so every growth number quietly collapsed to zero.
+   *  - a huge .in(...) list blows the URL length limit.
+   * So: chunk the ids, and page each chunk until it returns a short page.
+   */
+  const ID_CHUNK = 200;
+  const PAGE = 1000;
+
+  const fetchAll = async (table: 'snapshots' | 'daily_summaries') => {
+    const rows: HistoryRow[] = [];
+    for (let i = 0; i < modelIds.length; i += ID_CHUNK) {
+      const ids = modelIds.slice(i, i + ID_CHUNK);
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from(table)
+          .select('model_id, ts, downloads, likes')
+          .in('model_id', ids)
+          .order('ts', { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as HistoryRow[];
+        rows.push(...batch);
+        if (batch.length < PAGE) break;
+      }
+    }
+    return rows;
+  };
+
+  const [snapRows, dayRows] = await Promise.all([
+    fetchAll('snapshots'),
+    fetchAll('daily_summaries'),
   ]);
+  const snapsRes = { data: snapRows, error: null as null | Error };
+  const daysRes = { data: dayRows, error: null as null | Error };
   if (snapsRes.error) throw snapsRes.error;
   if (daysRes.error) throw daysRes.error;
 
@@ -122,18 +155,30 @@ export async function getCandidates(f: CandidateFilters = {}): Promise<Candidate
   const windowHours = f.windowHours ?? 168;
   const since = Date.now() - windowHours * 3600_000;
 
-  let query = supabase
-    .from('models')
-    .select(
-      'id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes, first_seen_at, last_scraped_at'
-    )
-    .gte('last_scraped_at', new Date(since).toISOString());
+  // PostgREST caps every select at 1000 rows. Past that the cap is silent: you
+  // get an arbitrary 1000 models and score those, so whole categories vanish
+  // from the ranking. Page explicitly instead.
+  const PAGE = 1000;
+  const MAX_MODELS = Number(process.env.SCORE_MAX_MODELS ?? 5000);
+  let modelRows: ModelRow[] = [];
+  for (let from = 0; from < MAX_MODELS; from += PAGE) {
+    let query = supabase
+      .from('models')
+      .select(
+        'id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes, first_seen_at, last_scraped_at'
+      )
+      .gte('last_scraped_at', new Date(since).toISOString())
+      .order('last_scraped_at', { ascending: false })
+      .range(from, from + PAGE - 1);
 
-  if (f.category) query = query.eq('category', f.category);
+    if (f.category) query = query.eq('category', f.category);
 
-  const { data, error } = await query;
-  if (error) throw error;
-  let modelRows = (data ?? []) as ModelRow[];
+    const { data, error } = await query;
+    if (error) throw error;
+    const batch = (data ?? []) as ModelRow[];
+    modelRows = modelRows.concat(batch);
+    if (batch.length < PAGE) break;
+  }
   if (modelRows.length === 0) return [];
 
   // Free-text search on name/creator done in JS (avoids escaping user input
@@ -190,11 +235,20 @@ export async function getCandidates(f: CandidateFilters = {}): Promise<Candidate
 
 export async function getCategories(): Promise<string[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('models').select('category').not('category', 'is', null);
-  if (error) throw error;
+  // Same 1000-row cap applies here: without paging, whole categories were
+  // missing from the dashboard's filter dropdown.
   const set = new Set<string>();
-  for (const row of (data ?? []) as { category: string | null }[]) {
-    if (row.category) set.add(row.category);
+  const PAGE = 1000;
+  for (let from = 0; from < 20000; from += PAGE) {
+    const { data, error } = await supabase
+      .from('models')
+      .select('category')
+      .not('category', 'is', null)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as { category: string | null }[];
+    for (const row of batch) if (row.category) set.add(row.category);
+    if (batch.length < PAGE) break;
   }
   return Array.from(set).sort();
 }
@@ -449,15 +503,26 @@ export async function getFeed(opts: { limit?: number; excludeIds?: string[] } = 
   const limit = Math.min(opts.limit ?? 30, 100);
   const exclude = new Set(opts.excludeIds ?? []);
 
-  const { data, error } = await supabase
-    .from('models')
-    .select('id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes')
-    .eq('liked', false)
-    .order('last_scraped_at', { ascending: false })
-    .limit(400);
-  if (error) throw error;
+  // Pool the whole unliked set (paged past the 1000-row cap), not just the 400
+  // most recently scraped - otherwise the feed only ever shows whichever
+  // category happened to be scraped last.
+  const PAGE = 1000;
+  const POOL_MAX = Number(process.env.FEED_POOL_MAX ?? 3000);
+  let pool: ModelRow[] = [];
+  for (let from = 0; from < POOL_MAX; from += PAGE) {
+    const { data, error } = await supabase
+      .from('models')
+      .select('id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes')
+      .eq('liked', false)
+      .order('last_scraped_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as ModelRow[];
+    pool = pool.concat(batch);
+    if (batch.length < PAGE) break;
+  }
 
-  const rows = ((data ?? []) as ModelRow[]).filter((m) => !exclude.has(m.makerworld_id));
+  const rows = pool.filter((m) => !exclude.has(m.makerworld_id));
   if (rows.length === 0) return [];
 
   const historyByModel = await fetchHistoryByModel(rows.map((m) => m.id));
