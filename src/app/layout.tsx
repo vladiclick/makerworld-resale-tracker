@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/">Dashboard</Link>
           <Link href="/swipe">Swipe</Link>
           <Link href="/liked">Liked</Link>
+          <Link href="/listings">Listings</Link>
         </nav>
         {children}
       </body>
