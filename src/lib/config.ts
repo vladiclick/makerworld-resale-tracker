@@ -17,6 +17,25 @@ export type Target = {
   pageUrl: string;
 };
 
+/**
+ * Licences whose prints may legally be sold. MakerWorld's search API accepts
+ * these server-side via `&licenses=`, so we ask it for sellable models only
+ * instead of scraping everything and discarding ~95% (verified: of 2160
+ * models scraped unfiltered, 2040 were personal-use-only).
+ *
+ *   CC0    sell freely
+ *   BY     sell with attribution
+ *   BY-SA  sell with attribution, share-alike on derivatives
+ *   BY-ND  sell unmodified prints only
+ *
+ * Deliberately excludes every NC (NonCommercial) variant, MakerWorld's
+ * "Standard Digital File License" and "MakerWorld Exclusive License", all of
+ * which forbid selling prints. See src/lib/license.ts.
+ */
+export const SELLABLE_LICENSES = (
+  process.env.SCRAPE_LICENSES ?? 'CC0,BY,BY-SA,BY-ND'
+).trim();
+
 export const SCRAPE = {
   /** polite delay between API calls, ms */
   delayMinMs: Number(process.env.SCRAPE_DELAY_MIN_MS ?? 2000),

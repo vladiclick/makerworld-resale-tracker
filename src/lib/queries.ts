@@ -1,5 +1,6 @@
 import { getSupabase } from './supabase';
 import { scoreModel, type SnapshotRow } from './scoring';
+import { isSellable, licenseInfo, type Sellable } from './license';
 
 export type Candidate = {
   id: string;
@@ -18,6 +19,9 @@ export type Candidate = {
   windowGrowth: number | null; // downloads gained inside the selected time window
   shortlisted: boolean;
   lastSeenAt: number;
+  license: string | null;
+  sellable: Sellable;
+  licenseNote: string;
 };
 
 export type CandidateFilters = {
@@ -26,6 +30,8 @@ export type CandidateFilters = {
   windowHours?: number; // 24 / 168 / 720
   shortlistedOnly?: boolean;
   quickPrintOnly?: boolean;
+  /** Hide models whose licence forbids selling prints. Defaults to true. */
+  sellableOnly?: boolean;
   limit?: number;
   search?: string;
 };
@@ -49,6 +55,7 @@ type ModelRow = {
   tags: string[] | null;
   downloads: number | null;
   likes: number | null;
+  license?: string | null;
   first_seen_at: string;
   last_scraped_at: string;
 };
@@ -143,7 +150,11 @@ function windowGrowthFor(historyDesc: HistPoint[], since: number): number | null
 async function fetchShortlistedIds(modelIds: (string | number)[]): Promise<Set<string>> {
   if (modelIds.length === 0) return new Set();
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('shortlist').select('model_id').in('model_id', modelIds);
+  // Deliberately NOT filtered by modelIds: passing thousands of ids into an
+  // .in() blows PostgREST's URL length limit and comes back as a bare
+  // "Bad Request". The shortlist is a hand-curated table of tens of rows, so
+  // fetching all of it and intersecting in JS is both simpler and cheaper.
+  const { data, error } = await supabase.from('shortlist').select('model_id').limit(1000);
   if (error) throw error;
   return new Set((data ?? []).map((r: { model_id: number | string }) => String(r.model_id)));
 }
@@ -165,7 +176,7 @@ export async function getCandidates(f: CandidateFilters = {}): Promise<Candidate
     let query = supabase
       .from('models')
       .select(
-        'id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes, first_seen_at, last_scraped_at'
+        'id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes, license, first_seen_at, last_scraped_at'
       )
       .gte('last_scraped_at', new Date(since).toISOString())
       .order('last_scraped_at', { ascending: false })
@@ -207,6 +218,8 @@ export async function getCandidates(f: CandidateFilters = {}): Promise<Candidate
 
     if (typeof f.minEngagement === 'number' && f.minEngagement > 0 && b.engagementRatio < f.minEngagement) continue;
     if (f.quickPrintOnly && !b.quickPrint) continue;
+    // Default ON: a model you can't legally sell is not a candidate.
+    if (f.sellableOnly !== false && !isSellable(m.license)) continue;
     if (f.shortlistedOnly && !shortlisted) continue;
 
     candidates.push({
@@ -226,6 +239,9 @@ export async function getCandidates(f: CandidateFilters = {}): Promise<Candidate
       windowGrowth: windowGrowthFor(history, since),
       shortlisted,
       lastSeenAt: new Date(m.last_scraped_at).getTime(),
+      license: m.license ?? null,
+      sellable: licenseInfo(m.license).sellable,
+      licenseNote: licenseInfo(m.license).note,
     });
   }
 
@@ -491,6 +507,9 @@ export type FeedCard = {
   score: number;
   engagementRatio: number;
   quickPrint: boolean;
+  license: string | null;
+  sellable: Sellable;
+  licenseNote: string;
 };
 
 /**
@@ -498,7 +517,9 @@ export type FeedCard = {
  * `excludeIds` are the makerworld ids already swiped away this session -
  * they stay in the DB untouched, they're just not served again.
  */
-export async function getFeed(opts: { limit?: number; excludeIds?: string[] } = {}): Promise<FeedCard[]> {
+export async function getFeed(
+  opts: { limit?: number; excludeIds?: string[]; sellableOnly?: boolean } = {}
+): Promise<FeedCard[]> {
   const supabase = getSupabase();
   const limit = Math.min(opts.limit ?? 30, 100);
   const exclude = new Set(opts.excludeIds ?? []);
@@ -512,7 +533,7 @@ export async function getFeed(opts: { limit?: number; excludeIds?: string[] } = 
   for (let from = 0; from < POOL_MAX; from += PAGE) {
     const { data, error } = await supabase
       .from('models')
-      .select('id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes')
+      .select('id, makerworld_id, name, creator, url, thumbnail_url, category, tags, downloads, likes, license')
       .eq('liked', false)
       .order('last_scraped_at', { ascending: false })
       .range(from, from + PAGE - 1);
@@ -522,7 +543,10 @@ export async function getFeed(opts: { limit?: number; excludeIds?: string[] } = 
     if (batch.length < PAGE) break;
   }
 
-  const rows = pool.filter((m) => !exclude.has(m.makerworld_id));
+  // Default ON: don't put something in the swipe feed that can't be sold.
+  const rows = pool
+    .filter((m) => !exclude.has(m.makerworld_id))
+    .filter((m) => opts.sellableOnly === false || isSellable(m.license));
   if (rows.length === 0) return [];
 
   const historyByModel = await fetchHistoryByModel(rows.map((m) => m.id));
@@ -542,6 +566,9 @@ export async function getFeed(opts: { limit?: number; excludeIds?: string[] } = 
       score: b.score,
       engagementRatio: b.engagementRatio,
       quickPrint: b.quickPrint,
+      license: m.license ?? null,
+      sellable: licenseInfo(m.license).sellable,
+      licenseNote: licenseInfo(m.license).note,
     };
   });
 
@@ -569,6 +596,9 @@ export type LikedModel = {
   downloads: number;
   likes: number;
   likedAt: string | null;
+  license: string | null;
+  sellable: Sellable;
+  licenseNote: string;
 };
 
 /** Everything liked, newest like first. Shape feeds the JSON export directly. */
@@ -576,7 +606,7 @@ export async function getLikedModels(): Promise<LikedModel[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('models')
-    .select('makerworld_id, name, creator, url, thumbnail_url, category, downloads, likes, liked_at')
+    .select('makerworld_id, name, creator, url, thumbnail_url, category, downloads, likes, liked_at, license')
     .eq('liked', true)
     .order('liked_at', { ascending: false, nullsFirst: false });
   if (error) throw error;
@@ -591,5 +621,8 @@ export async function getLikedModels(): Promise<LikedModel[]> {
     downloads: m.downloads ?? 0,
     likes: m.likes ?? 0,
     likedAt: m.liked_at,
+    license: m.license ?? null,
+    sellable: licenseInfo(m.license).sellable,
+    licenseNote: licenseInfo(m.license).note,
   }));
 }

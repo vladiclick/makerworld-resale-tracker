@@ -31,6 +31,9 @@ type FeedCard = {
   score: number;
   engagementRatio: number;
   quickPrint: boolean;
+  license: string | null;
+  sellable: 'yes' | 'conditional' | 'no' | 'unknown';
+  licenseNote: string;
 };
 
 const EXCLUDE_STORAGE_KEY = 'swipe:excludedIds';
@@ -115,6 +118,13 @@ function CardFace({ card }: { card: FeedCard }) {
             <dd>{card.engagementRatio.toFixed(2)}</dd>
           </div>
         </dl>
+
+        {/* Licence: only sellable models reach this feed, but a conditional
+            one (ShareAlike / NoDerivatives) carries strings worth seeing. */}
+        <div className={styles.meta} style={{ marginTop: 6 }} title={card.licenseNote}>
+          ⚖ {card.license ?? 'licence unknown'}
+          {card.sellable === 'conditional' ? ' — conditions apply' : ''}
+        </div>
 
         {/* Link out - deliberately not inside anything that starts a drag. */}
         <a

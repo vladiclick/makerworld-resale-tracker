@@ -48,6 +48,8 @@ export default function Dashboard() {
   const [windowHours, setWindowHours] = useState(168);
   const [quickOnly, setQuickOnly] = useState(false);
   const [shortlistedOnly, setShortlistedOnly] = useState(false);
+  // Default ON: models whose licence forbids selling prints are hidden.
+  const [sellableOnly, setSellableOnly] = useState(true);
   const [q, setQ] = useState('');
 
   const filters = useMemo(() => {
@@ -57,9 +59,10 @@ export default function Dashboard() {
     p.set('windowHours', String(windowHours));
     if (quickOnly) p.set('quickPrint', '1');
     if (shortlistedOnly) p.set('shortlisted', '1');
+    if (!sellableOnly) p.set('sellable', '0');
     if (q.trim()) p.set('q', q.trim());
     return p.toString();
-  }, [category, minEngagement, windowHours, quickOnly, shortlistedOnly, q]);
+  }, [category, minEngagement, windowHours, quickOnly, shortlistedOnly, sellableOnly, q]);
 
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
@@ -168,6 +171,13 @@ export default function Dashboard() {
         >
           Shortlisted only
         </button>
+        <button
+          className={sellableOnly ? 'on' : 'ghost'}
+          onClick={() => setSellableOnly((v) => !v)}
+          title="MakerWorld's Standard Digital File License forbids selling prints. This hides those."
+        >
+          {sellableOnly ? '⚖ Sellable only' : '⚖ Showing unsellable too'}
+        </button>
 
         <input
           placeholder="search name / creator"
@@ -225,6 +235,11 @@ export default function Dashboard() {
                 </td>
                 <td>
                   <span className="tag">{c.category}</span>
+                  {c.sellable === 'conditional' && (
+                    <span className="tag warn-tag" title={c.licenseNote} style={{ marginLeft: 6 }}>
+                      {c.license}
+                    </span>
+                  )}
                 </td>
                 <td className="num">
                   <span className="score-badge">{c.score.toFixed(1)}</span>

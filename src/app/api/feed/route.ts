@@ -19,6 +19,7 @@ export async function GET(req: Request) {
     const cards = await getFeed({
       limit: sp.get('limit') ? Number(sp.get('limit')) : undefined,
       excludeIds,
+      sellableOnly: sp.get('sellable') !== '0',
     });
     return NextResponse.json({ cards, servedAt: Date.now() });
   } catch (e) {

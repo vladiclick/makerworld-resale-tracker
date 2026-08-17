@@ -80,6 +80,12 @@ create table if not exists daily_summaries (
 -- Row Level Security: enabled everywhere, no policies anywhere (see comment
 -- at the top of this file). The service-role key bypasses RLS by design;
 -- the anon key is granted nothing.
+-- Licence string exactly as MakerWorld reports it (e.g. "Standard Digital File
+-- License", "BY-NC-SA", "CC0"). Classification lives in src/lib/license.ts so
+-- it can be corrected without a migration. This matters: MakerWorld's Standard
+-- Digital File License forbids selling prints, and it covers ~80% of models.
+alter table models add column if not exists license text;
+
 alter table models          enable row level security;
 alter table snapshots       enable row level security;
 alter table shortlist       enable row level security;
@@ -108,14 +114,14 @@ begin
   return query
   insert into models (
     makerworld_id, name, creator, url, thumbnail_url, category, tags,
-    downloads, likes, first_seen_at, last_scraped_at
+    downloads, likes, license, first_seen_at, last_scraped_at
   )
   select
     r.makerworld_id, r.name, r.creator, r.url, r.thumbnail_url, r.category,
-    coalesce(r.tags, '[]'::jsonb), r.downloads, r.likes, now(), now()
+    coalesce(r.tags, '[]'::jsonb), r.downloads, r.likes, r.license, now(), now()
   from jsonb_to_recordset(payload) as r(
     makerworld_id text, name text, creator text, url text, thumbnail_url text,
-    category text, tags jsonb, downloads integer, likes integer
+    category text, tags jsonb, downloads integer, likes integer, license text
   )
   on conflict (makerworld_id) do update set
     name            = excluded.name,
@@ -125,6 +131,7 @@ begin
     tags            = excluded.tags,
     downloads       = excluded.downloads,
     likes           = excluded.likes,
+    license         = coalesce(excluded.license, models.license),
     last_scraped_at = excluded.last_scraped_at
   returning *;
 end;

@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase';
-import { SCRAPE, TARGETS, type Target } from './config';
+import { SCRAPE, SELLABLE_LICENSES, TARGETS, type Target } from './config';
 import { isAllowed, loadRobots } from './robots';
 
 /**
@@ -36,6 +36,7 @@ export type ScrapedModel = {
   source: string;
   tags: string[];
   createdAt: string | null;
+  license: string | null;
 };
 
 type ApiHit = {
@@ -49,6 +50,7 @@ type ApiHit = {
   designCreator?: { name?: string };
   tags?: string[];
   createTime?: string;
+  license?: string;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -64,6 +66,8 @@ function buildApiUrl(target: Target, offset: number, limit = 20): string {
     offset: String(offset),
     designType: '0',
   });
+  // Ask MakerWorld for sellable licences only - see SELLABLE_LICENSES.
+  if (SELLABLE_LICENSES) p.set('licenses', SELLABLE_LICENSES);
   return `${API}?${p.toString()}`;
 }
 
@@ -82,6 +86,8 @@ function normalize(hit: ApiHit, target: Target): ScrapedModel | null {
     source: target.label,
     tags: Array.isArray(hit.tags) ? hit.tags.slice(0, 30) : [],
     createdAt: hit.createTime ?? null,
+    // Decides whether this model can legally be sold - see src/lib/license.ts
+    license: hit.license ?? null,
   };
 }
 
@@ -342,6 +348,7 @@ export async function persist(models: ScrapedModel[]): Promise<void> {
     tags: m.tags,
     downloads: m.downloads,
     likes: m.likes,
+    license: m.license,
   }));
 
   const { data: upserted, error: upsertError } = await supabase.rpc('upsert_models', { payload });

@@ -12,6 +12,8 @@ export async function GET(req: Request) {
     windowHours: sp.get('windowHours') ? Number(sp.get('windowHours')) : undefined,
     shortlistedOnly: sp.get('shortlisted') === '1',
     quickPrintOnly: sp.get('quickPrint') === '1',
+    // Default on: pass ?sellable=0 to include models you can't legally sell.
+    sellableOnly: sp.get('sellable') !== '0',
     search: sp.get('q') ?? undefined,
     limit: sp.get('limit') ? Number(sp.get('limit')) : undefined,
   });
