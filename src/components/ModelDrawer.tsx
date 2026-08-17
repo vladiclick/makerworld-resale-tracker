@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { thumb } from '@/lib/thumb';
 
 type Detail = {
   model: {
@@ -132,7 +133,7 @@ export default function ModelDrawer({
 
             {d.model.thumbnailUrl && (
               /* referenced from MakerWorld's CDN, not copied into this app */
-              <img className="cover" src={d.model.thumbnailUrl} alt="" />
+              <img className="cover" src={thumb(d.model.thumbnailUrl, 620)} alt="" decoding="async" />
             )}
 
             <div className="kv">

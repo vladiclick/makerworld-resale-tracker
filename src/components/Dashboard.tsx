@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ModelDrawer from './ModelDrawer';
 import ScrapeControls from './ScrapeControls';
 import type { Candidate } from '@/lib/queries';
+import { thumb } from '@/lib/thumb';
 
 const POLL_MS = 60_000;
 
@@ -210,7 +211,7 @@ export default function Dashboard() {
                 <td>
                   {/* thumbnails are hot-linked from MakerWorld, never re-hosted */}
                   {c.thumbnailUrl ? (
-                    <img className="thumb" src={c.thumbnailUrl} alt="" loading="lazy" />
+                    <img className="thumb" src={thumb(c.thumbnailUrl, 56)} alt="" loading="lazy" decoding="async" />
                   ) : (
                     <div className="thumb" />
                   )}

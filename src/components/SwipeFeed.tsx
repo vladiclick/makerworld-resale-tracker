@@ -11,6 +11,7 @@ import {
 } from 'react';
 import Link from 'next/link';
 import styles from './SwipeFeed.module.css';
+import { thumb } from '@/lib/thumb';
 
 /**
  * Shape mirrors `FeedCard` from '@/lib/queries'. Redeclared locally (rather
@@ -75,7 +76,14 @@ function CardFace({ card }: { card: FeedCard }) {
       <div className={styles.thumbWrap}>
         {card.thumbnailUrl ? (
           // Hot-linked from MakerWorld's CDN, never re-hosted.
-          <img className={styles.thumb} src={card.thumbnailUrl} alt="" draggable={false} />
+          <img
+            className={styles.thumb}
+            src={thumb(card.thumbnailUrl, 460)}
+            alt=""
+            draggable={false}
+            decoding="async"
+            fetchPriority="high"
+          />
         ) : (
           <div className={styles.thumbFallback}>No image</div>
         )}
@@ -306,6 +314,19 @@ export default function SwipeFeed() {
   useEffect(() => {
     if (!exhausted && queue.length < REFILL_THRESHOLD) fetchMore();
   }, [queue.length, exhausted, fetchMore]);
+
+  // Warm the next few cards' images in the browser cache so a swipe reveals an
+  // already-decoded image instead of a grey box. Same resized URL the card
+  // will request, so it's a cache hit, not a second download.
+  useEffect(() => {
+    for (const card of queue.slice(1, 4)) {
+      const src = thumb(card.thumbnailUrl, 460);
+      if (!src) continue;
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = src;
+    }
+  }, [queue]);
 
   const commit = useCallback((card: FeedCard, direction: 'like' | 'skip') => {
     // Optimistic: the card is already flying off screen by the time this

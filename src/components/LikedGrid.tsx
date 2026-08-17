@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LikedModel } from '@/lib/queries';
 import styles from './LikedGrid.module.css';
+import { thumb } from '@/lib/thumb';
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -128,7 +129,13 @@ export default function LikedGrid() {
                 <div className={styles.thumbWrap}>
                   {item.thumbnailUrl ? (
                     // Hot-linked thumbnail, never re-hosted — plain <img>, not next/image.
-                    <img src={item.thumbnailUrl} alt={item.name} className={styles.thumb} loading="lazy" />
+                    <img
+                      src={thumb(item.thumbnailUrl, 260)}
+                      alt={item.name}
+                      className={styles.thumb}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div className={styles.thumbPlaceholder}>No image</div>
                   )}
