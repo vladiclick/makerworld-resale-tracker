@@ -1,17 +1,33 @@
-# MakerWorld Resale Tracker
+# makerworld-resale-tracker
 
-Tracks trending 3D-printable models on MakerWorld and scores them for resale potential
-(print → sell on Vinted / OLX in Romania). Next.js 15 App Router app, Supabase (Postgres)
-for storage, deployed to Netlify. Scraping is on-demand from the dashboard, not scheduled —
-there is no cron job or always-on process.
+Finds trending 3D-printable models on MakerWorld that are legal to sell, scores them for resale potential in Romania (OLX / Vinted), and helps turn the good ones into listings.
 
-Three pages:
+## Features
+
+- On-demand scraper for MakerWorld categories. It checks robots.txt before every batch, waits 2–3 s between upstream requests and caches pages.
+- License filter: only models whose license allows selling prints are shown. MakerWorld's Standard Digital File License and all NonCommercial licenses are hidden; unknown licenses are hidden by default.
+- 0–100 resale score from download growth, engagement, traction, category fit for what actually sells on OLX/Vinted, and a quick-print heuristic. Every weight is an env var.
+- Dashboard with filters, a trend chart per model and shortlist tracking (printed / listed / sold / price / notes).
+- Mobile swipe feed to triage candidates, plus a liked list with JSON export.
+- Listing kit: ready-to-paste OLX/Vinted title, description, price range and categories for each liked model. `npm run photos` creates one folder per listing for the photos.
+- Snapshot retention: raw history for 90 days, then collapsed into daily summaries inside Postgres.
+
+## Tech stack
+
+Next.js 15 (App Router) · React 19 · TypeScript · Supabase (Postgres) · Recharts · Netlify · Playwright (recon scripts only)
+
+## Pages
 
 | Page | Route | What it's for |
 |---|---|---|
-| **Dashboard** | `/` | Ranked candidate table with filters, a "Scrape now" control, and a detail drawer (trend chart, tags, shortlist status: printed / listed / sold / sale price / notes). Your main working view. |
-| **Swipe** | `/swipe` | Mobile, TikTok/Tinder-style feed — one candidate at a time, swipe or tap to like/skip. Meant to be used from a phone to quickly triage what the scraper found. |
-| **Liked** | `/liked` | Grid of everything you liked in Swipe, with an "Export as JSON" button (client-side, no server round trip) for pulling the list into a spreadsheet or another tool. |
+| **Dashboard** | `/` | Ranked candidate table with filters, a "Scrape now" control, and a detail drawer (trend chart, tags, shortlist status). |
+| **Swipe** | `/swipe` | One candidate at a time — swipe or tap to like/skip. Meant for a phone. |
+| **Liked** | `/liked` | Everything you liked, with "Export as JSON" (built client-side). |
+| **Listings** | `/listings` | One listing at a time with copy buttons. Posting stays manual: OLX and Vinted both ban scripted posting, and every listing needs photos of the real print. |
+
+## Status
+
+Working. A personal tool I use to decide what to print and sell; scraping is on-demand from the dashboard, with no cron job or always-on process.
 
 ---
 
@@ -41,7 +57,7 @@ Three pages:
 
 ---
 
-## Local dev
+## Getting started
 
 ```bash
 npm install
@@ -127,7 +143,7 @@ interfaces, not just `localhost`, so it's reachable from another device on the s
    | `SCRAPE_CACHE_TTL_MS` | optional | in-process page cache window, ms (default 3600000 = 1h) |
    | `SCRAPE_MAX_PER_TARGET` | optional | models per target for CLI full-crawl `npm run scrape` (default 60) |
    | `RETENTION_RAW_DAYS` | optional | raw snapshot retention window, days (default 90) |
-   | `SCORE_W_GROWTH`, `SCORE_W_ENGAGEMENT`, `SCORE_W_TRACTION`, `SCORE_W_CATEGORY`, `SCORE_W_QUICKPRINT` | optional | scoring weights (default 0.35 / 0.25 / 0.10 / 0.20 / 0.10) |
+   | `SCORE_W_GROWTH`, `SCORE_W_ENGAGEMENT`, `SCORE_W_TRACTION`, `SCORE_W_CATEGORY`, `SCORE_W_QUICKPRINT` | optional | scoring weights (default 0.30 / 0.20 / 0.10 / 0.30 / 0.10) |
    | `SCORE_GROWTH_REF`, `SCORE_ENGAGEMENT_REF`, `SCORE_TRACTION_REF`, `SCORE_ENGAGEMENT_SMOOTH` | optional | scoring calibration constants (default 150 / 4 / 5000 / 25) |
 
 5. Deploy. **Env var changes require a redeploy** to take effect — Netlify bakes them into the
@@ -149,10 +165,10 @@ weighted into a 0–100 score (`src/lib/scoring.ts`):
 
 | Component | Weight | What it measures |
 |---|---|---|
-| `growth` | 0.35 | downloads/day between the oldest and newest of the last 3 snapshots, log-normalised (ref 150/day) |
-| `engagement` | 0.25 | shrunk `likes / (downloads + 25)` ratio, log-scaled against a ref of 4.0 |
+| `growth` | 0.30 | downloads/day between the oldest and newest of the last 3 snapshots, log-normalised (ref 150/day) |
+| `engagement` | 0.20 | shrunk `likes / (downloads + 25)` ratio, log-scaled against a ref of 4.0 |
 | `traction` | 0.10 | absolute downloads, log-normalised (ref 5000) |
-| `categoryFit` | 0.20 | Earrings/Jewelry 1.0 · Decor 0.75 · Fashion 0.7 · Household/Home 0.55 · Hobby & DIY 0.45 · Trending 0.4 · anything else 0.35 |
+| `categoryFit` | 0.30 | what actually sells on OLX.ro / Vinted.ro: Organizers and Decor 1.0 · Festivities 0.95 · Lithophanes 0.9 · Office, Gadgets, Characters 0.85 · Toys and Games 0.8 · … · Earrings and Jewelry 0.35–0.4 (high interest, but no margin at 7–15 lei) — plus a keyword market signal of about ±0.4 |
 | `quickPrint` | 0.10 | keyword heuristic for small, fast, low-filament prints (1.0 if flagged, 0 if not) |
 
 Two calibration notes, both from live MakerWorld data (captured Aug 2026, re-verify if the
@@ -217,8 +233,7 @@ running it with nothing new to collapse is a no-op.
   cold start. If you see intermittent 504s from `/api/scrape` on Netlify, this is the first
   place to look — lowering the per-click "count" (which doesn't change the per-call cap, but
   reduces how many chained calls a session makes) won't help; what would help is upgrading the
-  Netlify plan for a higher function timeout, or reducing `BATCH_CAP` in the route itself
-  (route code is out of scope for this pass — see the report below).
+  Netlify plan for a higher function timeout, or reducing `BATCH_CAP` in the route itself.
 - **Supabase free tier limits.** Free projects pause after a week of inactivity (auto-resume on
   next request, but that first request will be slow) and cap storage/bandwidth/monthly active
   compute. Fine for a personal tracker; watch it if scraping volume grows a lot.
@@ -254,6 +269,7 @@ running it with nothing new to collapse is a no-op.
 | `npm run migrate:supabase` | One-off: copy an old local `data/tracker.db` (SQLite) into Supabase. Safe to re-run |
 | `npm run probe:categories` | Recon: dump MakerWorld's current category ids + labels from its nav |
 | `npm run probe:api -- <path...>` | Recon: hit one or more API paths from inside a real browser session, print status + body |
+| `npm run photos` | Create one folder per liked model under `photos/`, with its listing text, ready for photos of the print |
 
 ---
 
@@ -264,3 +280,9 @@ model files, no descriptions, no re-hosted images, nothing redistributed. Scrapi
 and rate-limited (2-3s between upstream requests, robots.txt fetched and enforced before every
 batch), so keep click-driven scrape counts reasonable rather than hammering "Scrape now"
 repeatedly back to back.
+
+---
+
+## License
+
+[MIT](LICENSE)

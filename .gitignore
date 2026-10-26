@@ -9,3 +9,4 @@ tmp-inspect/
 next-env.d.ts
 .netlify/
 photos/
+*.tsbuildinfo
