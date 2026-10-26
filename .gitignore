@@ -8,3 +8,4 @@ tmp-inspect/
 .DS_Store
 next-env.d.ts
 .netlify/
+photos/

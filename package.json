@@ -15,7 +15,8 @@
     "migrate:supabase": "tsx scripts/migrate-sqlite-to-supabase.ts",
     "probe:categories": "tsx scripts/probe-categories.ts",
     "probe:api": "tsx scripts/probe-api.ts",
-    "db:apply": "tsx scripts/apply-schema.ts"
+    "db:apply": "tsx scripts/apply-schema.ts",
+    "photos": "tsx scripts/photo-folders.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
