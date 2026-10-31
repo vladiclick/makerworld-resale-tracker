@@ -28,11 +28,14 @@
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.21.0",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.1.12",
     "netlify-cli": "^27.1.1",
     "pg": "^8.23.0",
     "playwright": "^1.49.1",
