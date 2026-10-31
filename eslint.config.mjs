@@ -9,6 +9,13 @@ const compat = new FlatCompat({ baseDirectory: __dirname });
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      // Thumbnails are hot-linked from MakerWorld on purpose: next/image would
+      // proxy and cache them on our server, which counts as re-hosting.
+      "@next/next/no-img-element": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
