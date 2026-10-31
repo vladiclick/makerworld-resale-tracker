@@ -120,7 +120,10 @@ const FETCH_HEADERS = {
   referer: `${ORIGIN}/en/3d-models`,
 };
 
-async function fetchJson(path: string): Promise<any> {
+// One page of the MakerWorld search API; only `hits` is read.
+type SearchPage = { hits?: unknown };
+
+async function fetchJson(path: string): Promise<SearchPage | null> {
   const res = await fetch(ORIGIN + path, { headers: FETCH_HEADERS });
   const text = await res.text();
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}: ${text.slice(0, 200)}`);
@@ -190,7 +193,7 @@ export async function runScrape(targets: Target[] = TARGETS): Promise<RunStats> 
           stats.pagesCached++;
         } else {
           await politeDelay();
-          let json: any;
+          let json: SearchPage | null;
           try {
             json = await fetchJson(path);
           } catch (e) {
@@ -198,7 +201,7 @@ export async function runScrape(targets: Target[] = TARGETS): Promise<RunStats> 
             break;
           }
           stats.pagesHit++;
-          const hits: ApiHit[] = Array.isArray(json?.hits) ? json.hits : [];
+          const hits: ApiHit[] = Array.isArray(json?.hits) ? (json.hits as ApiHit[]) : [];
           models = hits.map((h) => normalize(h, target)).filter(Boolean) as ScrapedModel[];
           writeCache(path, models);
           if (hits.length === 0) break;
@@ -284,7 +287,7 @@ export async function scrapeBatch(opts: {
       hitCount = models.length;
     } else {
       const json = await fetchJson(path);
-      const hits: ApiHit[] = Array.isArray(json?.hits) ? json.hits : [];
+      const hits: ApiHit[] = Array.isArray(json?.hits) ? (json.hits as ApiHit[]) : [];
       hitCount = hits.length;
       models = hits.map((h) => normalize(h, target)).filter(Boolean) as ScrapedModel[];
       writeCache(path, models);

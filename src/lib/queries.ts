@@ -353,16 +353,14 @@ export async function getShortlist() {
     .select('*, models(makerworld_id, name, url, thumbnail_url, category)')
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  const rows = data ?? [];
+  const rows = (data ?? []) as ShortlistRow[];
   if (rows.length === 0) return [];
 
-  const modelIds = rows.map((r: any) => r.model_id);
+  const modelIds = rows.map((r: ShortlistRow) => r.model_id);
   const historyByModel = await fetchHistoryByModel(modelIds);
 
-  return rows.map((r: any) => {
-    const m = r.models as
-      | { makerworld_id: string; name: string; url: string; thumbnail_url: string | null; category: string | null }
-      | null;
+  return rows.map((r: ShortlistRow) => {
+    const m = r.models;
     const history = historyByModel.get(String(r.model_id)) ?? [];
     const snaps: SnapshotRow[] = history.slice(0, 3);
     const score = snaps.length > 0 ? scoreModel(snaps, { name: m?.name ?? '', category: m?.category ?? null, tags: [] }).score : null;
@@ -411,6 +409,19 @@ export async function removeFromShortlist(modelId: string): Promise<void> {
   const { error } = await supabase.from('shortlist').delete().eq('model_id', internalId);
   if (error) throw error;
 }
+
+// Row of `shortlist` joined with its model, as selected by getShortlist.
+type ShortlistRow = {
+  model_id: number | string;
+  added_at: string;
+  updated_at: string;
+  printed: boolean;
+  listed: boolean;
+  sold: boolean;
+  sale_price: number | null;
+  notes: string | null;
+  models: { makerworld_id: string; name: string; url: string; thumbnail_url: string | null; category: string | null } | null;
+};
 
 export type ShortlistPatch = {
   printed?: boolean;
@@ -586,6 +597,20 @@ export async function setLiked(modelId: string, liked: boolean): Promise<void> {
   if (error) throw error;
 }
 
+// Row of `models` as selected by getLikedModels.
+type LikedRow = {
+  makerworld_id: string;
+  name: string;
+  creator: string | null;
+  url: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  downloads: number | null;
+  likes: number | null;
+  liked_at: string | null;
+  license: string | null;
+};
+
 export type LikedModel = {
   id: string;
   name: string;
@@ -611,7 +636,7 @@ export async function getLikedModels(): Promise<LikedModel[]> {
     .order('liked_at', { ascending: false, nullsFirst: false });
   if (error) throw error;
 
-  return ((data ?? []) as any[]).map((m) => ({
+  return ((data ?? []) as LikedRow[]).map((m) => ({
     id: m.makerworld_id,
     name: m.name,
     creator: m.creator,
