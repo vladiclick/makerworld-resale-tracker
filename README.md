@@ -185,7 +185,8 @@ site's numbers drift — see below):
 
 `quickPrint` is a keyword heuristic over name + category + tags: hits on *earring, pendant,
 keychain, magnet, coaster, planter…* set it true; *helmet, cosplay, statue, shelf, life size…*
-force it false. It's a nudge, not a gate.
+force it false. It's a nudge, not a gate. Keywords match whole words (plus plural and -ed/-ing
+forms), so *table* doesn't fire on "adjustable" and *ams* doesn't fire on "dreams".
 
 A model with fewer than 2 snapshots (or a zero-width time window) has no growth history yet —
 its growth term falls back to half its traction score instead of zeroing out, so it isn't

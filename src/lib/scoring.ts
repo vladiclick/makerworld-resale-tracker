@@ -116,11 +116,24 @@ const SELLS_BADLY = [
   'cosplay', 'helmet', 'full size', 'life size', 'lifesize',
 ];
 
+/**
+ * Builds a matcher for whole words or phrases, allowing a plural or -ed/-ing
+ * ending. Plain substring checks misfire on short keywords: "ams" is inside
+ * "dreams", "table" inside "adjustable", "led" inside "coiled".
+ */
+function keywordMatcher(keywords: string[]): RegExp {
+  const escaped = keywords.map((k) => k.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`\\b(?:${escaped.join('|')})(?:s|es|ed|ing)?\\b`, 'i');
+}
+
+const SELLS_WELL_RE = keywordMatcher(SELLS_WELL);
+const SELLS_BADLY_RE = keywordMatcher(SELLS_BADLY);
+
 export function marketSignal(name: string, tags?: string[] | null): number {
-  const hay = `${name} ${(tags ?? []).join(' ')}`.toLowerCase();
+  const hay = `${name} ${(tags ?? []).join(' ')}`;
   let signal = 0;
-  if (SELLS_WELL.some((k) => hay.includes(k))) signal += 0.35;
-  if (SELLS_BADLY.some((k) => hay.includes(k))) signal -= 0.45;
+  if (SELLS_WELL_RE.test(hay)) signal += 0.35;
+  if (SELLS_BADLY_RE.test(hay)) signal -= 0.45;
   return signal;
 }
 
@@ -138,6 +151,9 @@ const BULKY_HINTS = [
   'full size', 'life size', 'lifesize', 'katana', 'sword', 'statue', 'bust',
 ];
 
+const SMALL_RE = keywordMatcher(SMALL_HINTS);
+const BULKY_RE = keywordMatcher(BULKY_HINTS);
+
 /**
  * Heuristic: is this likely a quick, low-material print?
  * Deliberately fuzzy - it only nudges the score, never gates it.
@@ -147,9 +163,9 @@ export function quickPrintFlag(
   category?: string | null,
   tags?: string[] | null
 ): boolean {
-  const hay = `${name} ${category ?? ''} ${(tags ?? []).join(' ')}`.toLowerCase();
-  if (BULKY_HINTS.some((h) => hay.includes(h))) return false;
-  if (SMALL_HINTS.some((h) => hay.includes(h))) return true;
+  const hay = `${name} ${category ?? ''} ${(tags ?? []).join(' ')}`;
+  if (BULKY_RE.test(hay)) return false;
+  if (SMALL_RE.test(hay)) return true;
   // Jewelry-ish categories are small by definition.
   const c = (category ?? '').toLowerCase();
   return c.includes('jewel') || c.includes('earring');

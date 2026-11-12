@@ -47,6 +47,18 @@ describe('marketSignal', () => {
   it('is neutral when nothing matches', () => {
     expect(marketSignal('Abstract sculpture', null)).toBe(0);
   });
+
+  it('matches whole words, not fragments of longer ones', () => {
+    expect(marketSignal('Sweet dreams night sign')).toBe(0); // "ams" in "dreams"
+    expect(marketSignal('Coiled spring toy')).toBe(0); // "led" in "coiled"
+    expect(marketSignal('AMS riser')).toBe(-0.45);
+  });
+
+  it('still matches plurals and -ed/-ing forms', () => {
+    expect(marketSignal('Wall-mounted shelf')).toBe(0.35);
+    expect(marketSignal('Phone docking station')).toBe(0.35);
+    expect(marketSignal('Set of 4 coasters')).toBe(0.35);
+  });
 });
 
 describe('quickPrintFlag', () => {
@@ -64,6 +76,16 @@ describe('quickPrintFlag', () => {
 
   it('is false when nothing hints either way', () => {
     expect(quickPrintFlag('Abstract sculpture')).toBe(false);
+  });
+
+  it('does not read bulky hints inside longer words', () => {
+    expect(quickPrintFlag('Adjustable phone stand')).toBe(true); // "table" in "adjustable"
+    expect(quickPrintFlag('Tablet holder')).toBe(true); // "table" in "tablet"
+    expect(quickPrintFlag('Robin ornament')).toBe(true); // "bin" in "robin"
+  });
+
+  it('does not read small hints inside longer words', () => {
+    expect(quickPrintFlag('Minimalist sculpture')).toBe(false); // "mini" in "minimalist"
   });
 });
 
