@@ -96,6 +96,18 @@ describe('buildListing', () => {
     );
   });
 
+  it('matches marketplace categories on whole words', () => {
+    const olx = (name: string) => listing({ name, category: null }).olxCategory;
+    expect(olx('Card holder')).toBe('Casa și grădina > Decorațiuni interior'); // not "car"
+    expect(olx('Scarf clip')).toBe('Casa și grădina > Decorațiuni interior'); // not "car"
+    expect(olx('Spring pen holder')).toBe('Casa și grădina > Decorațiuni interior'); // not "ring"
+    expect(listing({ name: 'Angled photo frame', category: null }).vintedCategory).toBe(
+      'Casă > Decorațiuni'
+    ); // not "led" -> lighting
+    expect(olx('Moon lightbox')).toBe('Casa și grădina > Iluminat');
+    expect(listing({ name: 'Octopus', category: 'Toys & Games' }).vintedCategory).toBe('Copii > Jucării');
+  });
+
   it('adds Romanian search tags and caps them at 10', () => {
     expect(listing({ name: 'Christmas ornament', category: null }).tags).toEqual(
       expect.arrayContaining(['printat 3d', 'cadou craciun'])

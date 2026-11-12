@@ -98,16 +98,16 @@ function priceFor(input: ListingInput) {
 
 /** OLX and Vinted use different trees; these are the closest real categories. */
 function categoriesFor(input: ListingInput): { olx: string; vinted: string } {
-  const hay = `${input.name} ${input.category ?? ''}`.toLowerCase();
-  if (/car|auto|cup holder|dashboard/.test(hay))
+  const hay = `${input.name} ${input.category ?? ''}`;
+  if (words('car', 'auto(?:motive)?', 'cup ?holder', 'dashboard').test(hay))
     return { olx: 'Auto, moto și ambarcațiuni > Piese auto > Accesorii interior', vinted: 'Casă > Depozitare' };
-  if (/earring|cercei|necklace|bracelet|ring|jewel/.test(hay))
+  if (words('earring', 'cercei', 'necklace', 'bracelet', 'ring', 'jewel\\w*').test(hay))
     return { olx: 'Modă și frumusețe > Accesorii > Bijuterii', vinted: 'Femei > Accesorii > Bijuterii' };
-  if (/toy|joc|puzzle|figur|dragon|game/.test(hay))
+  if (words('toy', 'joc(?:uri)?', 'puzzle', 'figur\\w*', 'dragon', 'game').test(hay))
     return { olx: 'Mama și copilul > Jucării', vinted: 'Copii > Jucării' };
-  if (/organizer|holder|stand|dock|desk|office/.test(hay))
+  if (words('organi[sz]er', 'holder', 'stand', 'dock', 'desk', 'office').test(hay))
     return { olx: 'Casa și grădina > Decorațiuni interior', vinted: 'Casă > Depozitare' };
-  if (/lamp|led|light|lithophane/.test(hay))
+  if (words('lamp', 'led', 'light', 'light ?box', 'lithophane').test(hay))
     return { olx: 'Casa și grădina > Iluminat', vinted: 'Casă > Decorațiuni' };
   return { olx: 'Casa și grădina > Decorațiuni interior', vinted: 'Casă > Decorațiuni' };
 }
