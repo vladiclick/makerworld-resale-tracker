@@ -166,7 +166,7 @@ weighted into a 0–100 score (`src/lib/scoring.ts`):
 | Component | Weight | What it measures |
 |---|---|---|
 | `growth` | 0.30 | downloads/day between the oldest and newest of the last 3 snapshots, log-normalised (ref 150/day) |
-| `engagement` | 0.20 | shrunk `likes / (downloads + 25)` ratio, log-scaled against a ref of 4.0 |
+| `engagement` | 0.20 | shrunk `likes / (downloads + 25)` ratio, scaled linearly against a ref of 4.0 (capped at 1) |
 | `traction` | 0.10 | absolute downloads, log-normalised (ref 5000) |
 | `categoryFit` | 0.30 | what actually sells on OLX.ro / Vinted.ro: Organizers and Decor 1.0 · Festivities 0.95 · Lithophanes 0.9 · Office, Gadgets, Characters 0.85 · Toys and Games 0.8 · … · Earrings and Jewelry 0.35–0.4 (high interest, but no margin at 7–15 lei) — plus a keyword market signal of about ±0.4 |
 | `quickPrint` | 0.10 | keyword heuristic for small, fast, low-filament prints (1.0 if flagged, 0 if not) |
