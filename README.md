@@ -14,7 +14,7 @@ Finds trending 3D-printable models on MakerWorld that are legal to sell, scores 
 
 ## Tech stack
 
-Next.js 15 (App Router) · React 19 · TypeScript · Supabase (Postgres) · Recharts · Netlify · Playwright (recon scripts only)
+Next.js 15 (App Router) · React 19 · TypeScript · Supabase (Postgres) · Recharts · Netlify · Vitest (unit tests) · Playwright (recon scripts only)
 
 ## Pages
 
@@ -260,7 +260,9 @@ running it with nothing new to collapse is a no-op.
 | `npm run dev` | Dashboard in dev mode, http://localhost:3000 |
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build (run `build` first) |
-| `npm run lint` | `next lint` |
+| `npm run lint` | ESLint over the whole project (`eslint .`) |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Vitest unit tests for the pure logic in `src/lib` (scoring, licences, listing copy, robots.txt, thumbnails) |
 | `npm run scrape` | One full CLI scrape cycle across every target category, then runs the retention pass |
 | `npm run score` | Print the current ranked candidate list, scored live from stored snapshots — no network calls |
 | `npm run retention` | Collapse snapshots older than `RETENTION_RAW_DAYS` into `daily_summaries`, standalone |
