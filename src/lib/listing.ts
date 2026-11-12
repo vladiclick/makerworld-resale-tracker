@@ -114,12 +114,12 @@ function categoriesFor(input: ListingInput): { olx: string; vinted: string } {
 
 function tagsFor(input: ListingInput): string[] {
   const base = ['printat 3d', 'print 3d', 'handmade', 'PLA'];
-  const hay = `${input.name} ${input.category ?? ''}`.toLowerCase();
-  if (/christmas|craciun|advent/.test(hay)) base.push('cadou craciun', 'decoratiuni craciun');
-  if (/halloween/.test(hay)) base.push('halloween', 'decor halloween');
-  if (/personali|nume|name|initial/.test(hay)) base.push('personalizat', 'cadou personalizat');
-  if (/organizer|holder|stand/.test(hay)) base.push('organizator', 'suport');
-  if (/earring|cercei/.test(hay)) base.push('cercei', 'bijuterii');
+  const hay = `${input.name} ${input.category ?? ''}`;
+  if (words('christmas', 'craciun', 'advent').test(hay)) base.push('cadou craciun', 'decoratiuni craciun');
+  if (words('halloween').test(hay)) base.push('halloween', 'decor halloween');
+  if (words('personali[sz]\\w*', 'nume', 'name', 'initial').test(hay)) base.push('personalizat', 'cadou personalizat');
+  if (words('organi[sz]er', 'holder', 'stand').test(hay)) base.push('organizator', 'suport');
+  if (words('earring', 'cercei').test(hay)) base.push('cercei', 'bijuterii');
   return base.slice(0, 10);
 }
 

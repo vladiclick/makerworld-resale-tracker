@@ -108,6 +108,15 @@ describe('buildListing', () => {
     expect(listing({ name: 'Octopus', category: 'Toys & Games' }).vintedCategory).toBe('Copii > Jucării');
   });
 
+  it('matches tag keywords on whole words', () => {
+    const tags = (name: string) => listing({ name, category: null }).tags;
+    expect(tags('Adventure map')).not.toContain('cadou craciun'); // "advent"
+    expect(tags('Enamel pin')).not.toContain('personalizat'); // "name"
+    expect(tags('Standard dice')).not.toContain('suport'); // "stand"
+    expect(tags('Advent calendar')).toContain('cadou craciun');
+    expect(tags('Name plate')).toContain('personalizat');
+  });
+
   it('adds Romanian search tags and caps them at 10', () => {
     expect(listing({ name: 'Christmas ornament', category: null }).tags).toEqual(
       expect.arrayContaining(['printat 3d', 'cadou craciun'])
