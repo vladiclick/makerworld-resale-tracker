@@ -32,7 +32,8 @@ export function thumb(
     return url; // not a URL we can reason about - hand it back untouched
   }
 
-  if (!RESIZABLE_HOSTS.some((h) => parsed.hostname.endsWith(h))) return url;
+  const host = parsed.hostname;
+  if (!RESIZABLE_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) return url;
   // Already carries a processing directive: don't fight with it.
   if (parsed.searchParams.has('x-oss-process')) return url;
 

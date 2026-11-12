@@ -32,6 +32,16 @@ describe('thumb', () => {
     expect(thumb(url, 400)).toBe(url);
   });
 
+  it('resizes on the bare domain and on its subdomains', () => {
+    expect(thumb('https://makerworld.com/a.jpg', 50)).toContain('x-oss-process=');
+    expect(thumb('https://img.makerworld.com/a.jpg', 50)).toContain('x-oss-process=');
+  });
+
+  it('does not treat a lookalike domain as the CDN', () => {
+    const url = 'https://notmakerworld.com/a.jpg';
+    expect(thumb(url, 50)).toBe(url);
+  });
+
   it('leaves other hosts alone', () => {
     const url = 'https://example.com/image.jpg';
     expect(thumb(url, 100)).toBe(url);
