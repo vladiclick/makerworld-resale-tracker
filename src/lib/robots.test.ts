@@ -31,6 +31,21 @@ describe('parseRobots', () => {
     expect(rules).toEqual({ disallow: ['/x'], allow: ['/x/y'] });
   });
 
+  it('applies a group whose User-agent run lists * after another agent', () => {
+    const rules = parseRobots('User-agent: Googlebot\nUser-agent: *\nDisallow: /shared');
+    expect(rules.disallow).toEqual(['/shared']);
+  });
+
+  it('applies a group whose User-agent run lists * before another agent', () => {
+    const rules = parseRobots('User-agent: *\nUser-agent: Googlebot\nDisallow: /shared');
+    expect(rules.disallow).toEqual(['/shared']);
+  });
+
+  it('starts a new group once a rule has ended the User-agent run', () => {
+    const rules = parseRobots('User-agent: *\nDisallow: /a\nUser-agent: Googlebot\nDisallow: /b');
+    expect(rules.disallow).toEqual(['/a']);
+  });
+
   it('keeps colons inside the value', () => {
     const rules = parseRobots('User-agent: *\nDisallow: /a:b');
     expect(rules.disallow).toEqual(['/a:b']);

@@ -10,6 +10,9 @@ const TTL = 24 * 60 * 60 * 1000;
 export function parseRobots(txt: string): Rules {
   const rules: Rules = { allow: [], disallow: [] };
   let inStar = false;
+  // Consecutive User-agent lines share one group (RFC 9309), so "*" anywhere
+  // in the run applies the rules that follow to us too.
+  let inAgentRun = false;
   for (const rawLine of txt.split('\n')) {
     const line = rawLine.split('#')[0].trim();
     if (!line) continue;
@@ -17,8 +20,12 @@ export function parseRobots(txt: string): Rules {
     const key = rawKey.trim().toLowerCase();
     const value = rest.join(':').trim();
     if (key === 'user-agent') {
-      inStar = value === '*';
-    } else if (inStar && key === 'disallow' && value) {
+      inStar = (inAgentRun && inStar) || value === '*';
+      inAgentRun = true;
+      continue;
+    }
+    inAgentRun = false;
+    if (inStar && key === 'disallow' && value) {
       rules.disallow.push(value);
     } else if (inStar && key === 'allow' && value) {
       rules.allow.push(value);
