@@ -56,6 +56,15 @@ export type Listing = {
 };
 
 /**
+ * Matches whole words, allowing a plural or -ed/-ing ending. Bare substrings
+ * misfire: /car/ also hits "card" and "scarf", /vent/ hits "advent", /led/
+ * hits "angled". Patterns are regex fragments, so stems like "figur\\w*" work.
+ */
+function words(...patterns: string[]): RegExp {
+  return new RegExp(`\\b(?:${patterns.join('|')})(?:s|es|ed|ing)?\\b`, 'i');
+}
+
+/**
  * Observed asking prices in RON for printed goods, Aug 2026.
  *   OLX: tool organiser 170, board-game inserts 200, car cup holder 95-100,
  *        headphone stand 30-39, name plates 40, figurines 20-50, keycap 8
@@ -64,18 +73,18 @@ export type Listing = {
  * Items with any favourites on Vinted averaged ~56 RON.
  */
 const PRICE_BANDS: { test: RegExp; min: number; max: number; label: string }[] = [
-  { test: /insert|board game|catan|dice tower/i, min: 120, max: 220, label: 'board game' },
-  { test: /organizer|organiser|makita|tool holder|drawer/i, min: 70, max: 170, label: 'organiser' },
-  { test: /lamp|light ?box|led|lithophane|hueforge/i, min: 70, max: 140, label: 'lamp/lightbox' },
-  { test: /car|auto|cup ?holder|suport pahar|dashboard|vent/i, min: 60, max: 110, label: 'car accessory' },
-  { test: /planter|vase|bowl|fruit|ghiveci/i, min: 40, max: 80, label: 'decor vessel' },
-  { test: /personali[sz]|custom name|nume|name ?tag|name ?plate|initial/i, min: 35, max: 80, label: 'personalised' },
-  { test: /dragon|articulated|flexi|figur|statue|bust/i, min: 30, max: 70, label: 'figurine' },
-  { test: /holder|stand|dock|mount|bracket|hook/i, min: 30, max: 60, label: 'holder/stand' },
-  { test: /christmas|halloween|advent|ornament|craciun|brad/i, min: 25, max: 60, label: 'seasonal' },
-  { test: /coaster|bookmark|semn de carte|magnet/i, min: 10, max: 25, label: 'small flat' },
-  { test: /keychain|breloc|keyring|charm/i, min: 10, max: 20, label: 'keychain' },
-  { test: /earring|cercei|pendant|necklace|bracelet|ring/i, min: 7, max: 20, label: 'jewelry (thin margin)' },
+  { test: words('insert', 'board ?game', 'catan', 'dice tower'), min: 120, max: 220, label: 'board game' },
+  { test: words('organi[sz]er', 'makita', 'tool holder', 'drawer'), min: 70, max: 170, label: 'organiser' },
+  { test: words('lamp', 'light ?box', 'led', 'lithophane', 'hueforge'), min: 70, max: 140, label: 'lamp/lightbox' },
+  { test: words('car', 'auto(?:motive)?', 'cup ?holder', 'suport pahar', 'dashboard', 'vent'), min: 60, max: 110, label: 'car accessory' },
+  { test: words('planter', 'vase', 'bowl', 'fruit', 'ghiveci'), min: 40, max: 80, label: 'decor vessel' },
+  { test: words('personali[sz]\\w*', 'custom name', 'nume', 'name ?tag', 'name ?plate', 'initial'), min: 35, max: 80, label: 'personalised' },
+  { test: words('dragon', 'articulated', 'flexi', 'figur\\w*', 'statue', 'bust'), min: 30, max: 70, label: 'figurine' },
+  { test: words('holder', 'stand', 'dock', 'mount', 'bracket', 'hook'), min: 30, max: 60, label: 'holder/stand' },
+  { test: words('christmas', 'halloween', 'advent', 'ornament', 'craciun', 'brad'), min: 25, max: 60, label: 'seasonal' },
+  { test: words('coaster', 'bookmark', 'semn de carte', 'magnet'), min: 10, max: 25, label: 'small flat' },
+  { test: words('keychain', 'breloc', 'keyring', 'charm'), min: 10, max: 20, label: 'keychain' },
+  { test: words('earring', 'cercei', 'pendant', 'necklace', 'bracelet', 'ring'), min: 7, max: 20, label: 'jewelry (thin margin)' },
 ];
 
 const DEFAULT_BAND = { min: 25, max: 60, label: 'general' };

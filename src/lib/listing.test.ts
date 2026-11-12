@@ -10,6 +10,10 @@ const base: ListingInput = {
 };
 
 const listing = (over: Partial<ListingInput>) => buildListing({ ...base, ...over });
+const band = (name: string) => {
+  const l = listing({ name, category: null });
+  return [l.priceMin, l.priceMax];
+};
 
 describe('buildListing', () => {
   it('builds a title capped at 70 characters', () => {
@@ -56,6 +60,19 @@ describe('buildListing', () => {
       priceMin: 7,
       priceMax: 20,
     });
+  });
+
+  it('matches price keywords on whole words', () => {
+    expect(band('Advent calendar')).toEqual([25, 60]); // seasonal, not "vent" -> car
+    expect(band('Card holder')).toEqual([30, 60]); // holder, not "car"
+    expect(band('Angled phone stand')).toEqual([30, 60]); // stand, not "led" -> lamp
+    expect(band('Spring clip')).toEqual([25, 60]); // general, not "ring" -> jewelry
+  });
+
+  it('still prices plurals and -ed/-ing forms', () => {
+    expect(band('LEDs for a shelf')).toEqual([70, 140]);
+    expect(band('Wall-mounted key rack')).toEqual([30, 60]);
+    expect(band('Personalized pet tag')).toEqual([35, 80]);
   });
 
   it('uses the general band when nothing matches', () => {
